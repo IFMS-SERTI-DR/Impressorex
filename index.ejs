@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title></title>
+
+<style>
+#quadrado{
+	width: 50vh;
+	height: 50vh;
+	background-color: green;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	border-radius: 10%;
+	display: flex;
+}
+
+#xml{
+	position: absolute;
+	top: 70%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	border-radius: 10%;
+}
+
+#quadinho{
+	width: 70%;
+	height: 30%;
+	position: absolute;
+	top: 20%;
+	left: 32%;
+	transform: translate(-50%, -50%);
+	display: flex;
+}
+
+#bebe{
+	width: 250%;
+	height: 250%;
+}
+
+#resultado{
+	position:absolute;
+	top:80%;
+	left:50%;
+	transform:translate(-50%,0);
+}
+
+table{
+	border-collapse:collapse;
+	font-size:14px;
+}
+
+td,th{
+	border:1px solid black;
+	padding:4px 8px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div id="quadrado">
+	<div id="quadinho">
+		<img src="imagem.png" alt="" id="bebe">
+	</div>
+
+	<input type="file" id="xml" multiple>
+</div>
+
+<div id="resultado"></div>
+
+<script>
+
+let totalGlobalUsuarios={}
+let totalGlobalFolhas=0
+
+function lerArquivo(arquivo){
+
+	const leitor=new FileReader()
+
+	leitor.onload=function(e){
+
+		const xmlString=e.target.result
+
+		const resultado=analisarXmlString(xmlString)
+
+		somarResultados(resultado)
+
+		mostrarTabela()
+
+	}
+
+	leitor.readAsText(arquivo)
+}
+
+let input=document.getElementById("xml")
+
+input.addEventListener("change",function(){
+
+	totalGlobalUsuarios={}
+	totalGlobalFolhas=0
+
+	let arquivos=input.files
+
+	for(let i=0;i<arquivos.length;i++){
+
+		lerArquivo(arquivos[i])
+
+	}
+
+})
+
+function analisarXmlString(xmlString){
+
+	const parser=new DOMParser()
+	const xmlDoc=parser.parseFromString(xmlString,"text/xml")
+
+	const totalPorUsuario={}
+	let totalGeral=0
+
+	const jobs=xmlDoc.getElementsByTagName("*")
+
+	for(let i=0;i<jobs.length;i++){
+
+		const node=jobs[i]
+
+		if(node.localName!=="print_job_log") continue
+
+		let resultado=""
+		let nome="Desconhecido"
+		let folhas=0
+
+		const filhos=node.getElementsByTagName("*")
+
+		for(let j=0;j<filhos.length;j++){
+
+			const campo=filhos[j]
+
+			switch(campo.localName){
+
+				case "job_result":
+				resultado=campo.textContent.trim()
+				break
+
+				case "user_name":
+				if(campo.textContent.trim()){
+				nome=campo.textContent.trim()
+				}
+				break
+
+				case "account_name":
+				if(nome==="Desconhecido" && campo.textContent.trim()){
+				nome="Conta_"+campo.textContent.trim()
+				}
+				break
+
+				case "complete_pages":
+				folhas=parseInt(campo.textContent.trim(),10)
+				break
+
+			}
+		}
+
+		if(resultado!=="OK") continue
+
+		totalPorUsuario[nome]=(totalPorUsuario[nome]||0)+folhas
+		totalGeral+=folhas
+	}
+
+	return {totalPorUsuario,totalGeral}
+
+}
+
+function somarResultados(resultado){
+
+	for(let usuario in resultado.totalPorUsuario){
+
+		totalGlobalUsuarios[usuario]=(totalGlobalUsuarios[usuario]||0)+resultado.totalPorUsuario[usuario]
+
+	}
+
+	totalGlobalFolhas+=resultado.totalGeral
+
+}
+
+function mostrarTabela(){
+
+	let div=document.getElementById("resultado")
+
+	let tabela="<table>"
+	tabela+="<tr><th>Usuário</th><th>Páginas</th></tr>"
+
+	for(let usuario in totalGlobalUsuarios){
+
+		tabela+="<tr>"
+		tabela+="<td>"+usuario+"</td>"
+		tabela+="<td>"+totalGlobalUsuarios[usuario]+"</td>"
+		tabela+="</tr>"
+
+	}
+
+	tabela+="<tr>"
+	tabela+="<th>Total</th>"
+	tabela+="<th>"+totalGlobalFolhas+"</th>"
+	tabela+="</tr>"
+
+	tabela+="</table>"
+
+	div.innerHTML=tabela
+
+}
+
+</script>
+
+</body>
+</html>
